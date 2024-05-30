@@ -43,6 +43,6 @@ Give the task in ECS a taskrole with an inline policy to read from parameter sto
 
 To run locally execute the following
 
-`docker run -p 8080:3000 taskrole-ssmclient`
+`docker run -e AWS_ACCESS_KEY_ID=<redacted> -e AWS_SECRET_ACCESS_KEY=<redacted> -p 8080:3000 taskrole-ssmclient`
 
 and open [http://localhost:8080/something](http://localhost:8080/something). You will see a 404 but that's fine. It's just important that the Middleware as well as the Layout code will be executed.
