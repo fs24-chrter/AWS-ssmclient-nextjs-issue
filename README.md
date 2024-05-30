@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This a sample project to demonstrate an issue getting AWS credentials in code which runs in Next.js Middleware.
+I tried to isolate the issue as much as possible by using a simple Next.js bootstrap application.
 
-## Getting Started
+## Bug description
 
-First, run the development server:
+If you run this code in a container in ECS, it is not able to fetch AWS credentials if the code runs in Next.js middleware (see `src/middleware.ts`). However, the exact same code runs fine when it runs in a normal Next.js page (see `src/app/layout.tsx`). 
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+From my understanding the issue comes from the fact that the `SSMClient` resolves to the `Node` config in the page layout and to `Browser` config in the middleware. However it should not as the middleware is also completely executed on the server side.
+
+## How to deploy
+
+Build a new docker image, push to AWS ECR and let it run in AWS ECS.
+
+```
+docker build -f Docker/Dockerfile -t taskrole-ssmclient .
+docker tag taskrole-ssmclient <remote-ECR-image-name>
+docker push <remote-ECR-image-name>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Give the task in ECS a taskrole with an inline policy to read from parameter store.
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": "arn:aws:secretsmanager:eu-central-1:<redacted>:secret:<redacted>",
+            "Effect": "Allow"
+        },
+        {
+            "Action": "ssm:GetParametersByPath",
+            "Resource": "*",
+            "Effect": "Allow"
+        }
+    ]
+}
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How to run locally
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+To run locally execute the following
 
-## Learn More
+`docker run -p 8080:3000 taskrole-ssmclient`
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+and open [http://localhost:8080/something](http://localhost:8080/something). You will see a 404 but that's fine. It's just important that the Middleware as well as the Layout code will be executed.

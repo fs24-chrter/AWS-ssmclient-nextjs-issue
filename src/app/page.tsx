@@ -1,7 +1,10 @@
+'use client';
 import Image from "next/image";
 import styles from "./page.module.css";
+import { GetParametersByPathCommand, SSMClient } from "@aws-sdk/client-ssm";
 
 export default function Home() {
+
   return (
     <main className={styles.main}>
       <div className={styles.description}>
@@ -92,4 +95,8 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+async function SignInFunction(e: FormData) {
+  console.log('hello')
 }
